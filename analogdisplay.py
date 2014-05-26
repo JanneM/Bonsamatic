@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import numpy as np
 from pylab import *
 from scipy.optimize import curve_fit
 
@@ -130,6 +131,7 @@ def deg_t(deg,a,b,c):
 times = [6,12,18, 24,36, 48,60, 72, 96, 120, 144, 168, 192, 216, 240]
 tvolts = arange(256)*5./255.
 
+
 def find_nearest(arr,val):
     if not iterable(val): 
 	val=[val]
@@ -137,7 +139,27 @@ def find_nearest(arr,val):
     for v in val:
 	res.append((abs(arr-v)).argmin())
     
-    return array[idx]
+    return array(res)
+
+
+# volts to degrees to times:
+
+vd = volt_deg(tvolts, *vpar)
+vt = deg_t(vd, *tpar)
+
+# cumlative time to goal in seconds. secdiff[n] tells us how many seconds to wait to reach
+# n from n+1.
+tleft=np.round(vt*60*60).astype(int)
+
+#secdiff=diff(secs)
+
+# desired 
+stimes = array(times)*60*60
+
+nearest = find_nearest(tleft, stimes)
+
+for t,n,h in zip(stimes,nearest, times):
+    print "{{{0}, {1}}},\t // {2} hours".format(t,n,h)
 
 
 
