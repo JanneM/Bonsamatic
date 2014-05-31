@@ -2,6 +2,8 @@
 import numpy as np
 from pylab import *
 from scipy.optimize import curve_fit
+#for the dial drawing
+import svgwrite as sw
 
 # initial estimated Voltage/degree relationship, 10k resistor
 
@@ -81,8 +83,8 @@ print "mlog, clog, mlin: ", mlog, clog, mlin
 print "max angle:", volt_deg(5.0, mlog,clog,mlin)
 
 
-plot(D,V,'-.', d, exp(0.03061*d-0.6387), D[0:5], 0.04869*D[0:5])
-show()
+#plot(D,V,'-.', d, exp(0.03061*d-0.6387), D[0:5], 0.04869*D[0:5])
+#show()
 
 # create nice log-like scale distribution
 # 
@@ -162,4 +164,48 @@ for t,n,h in zip(stimes,nearest, times):
     print "{{{0}, {1}}},\t // {2} hours".format(t,n,h)
 
 
+# Plot the resulting display.
+#
+# We make it for 51.5x31.5mm screen. The needle center is 35mm from the upper
+# edge, with 7.5 mm circular clearance needed.
+
+def to_mm(xy):
+    return ("{0}mm".format(xy[0]), "{0}mm".format(xy[1]))
+
+# Assume 0 deg is east, going counterclockwise. Before conversion, multiply by dir and
+# add adj. 
+def rt_xy(r, theta, center=(0,0), adj=0.0, adir=1, ydir=1):
+    thadj = (theta*pi/180.0)*adir+(adj*pi/180.0)
+    return to_mm((center[0]+r*cos(thadj),center[1]+ydir*r*sin(thadj)))
+
+
+cx = 51.5/2.0
+cy = 35.0
+dout = 26.0	    #outside diameter
+din_l = dout-10.0   # inside for major ticks
+din_s = dout-7.0    # ditto minor ticks
+
+#angles. May need manual adjustment
+
+amin = volt_deg(tvolts[0], *vpar)[0]
+amax = volt_deg(tvolts[-1], *vpar)[0]
+ac = (amax-amin)/2.0
+
+ppar=[(cx, cy), 90.0+ac, -1, -1]
+
+dial = sw.Drawing('dial.svg', size=(u'51.5mm',u'35mm'), profile="tiny")
+
+dial.add(dial.rect(("0%","0%"), ("100%","100%"), stroke="grey",
+fill="none"))
+dial.add(dial.line(to_mm((0,31.5)), to_mm((51.5,31.5)), stroke="grey"))
+# angles for the explicit steps
+st_ang = volt_deg(tvolts[nearest], *vpar)
+
+dial.add(dial.line(rt_xy(10, 0,*ppar), rt_xy(dout,0,*ppar),
+    stroke=sw.rgb(0,0,0)))
+
+for a in st_ang:
+    dial.add(dial.line(rt_xy(din_l, a, *ppar),rt_xy(dout,a, *ppar), stroke=sw.rgb(0,0,0)))
+
+dial.save()
 
