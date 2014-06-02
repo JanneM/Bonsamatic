@@ -169,21 +169,48 @@ for t,n,h in zip(stimes,nearest, times):
 # We make it for 51.5x31.5mm screen. The needle center is 35mm from the upper
 # edge, with 7.5 mm circular clearance needed.
 
-def to_mm(xy):
-    return ("{0}mm".format(xy[0]), "{0}mm".format(xy[1]))
+# ticks for display 
+tdays = [24,48,72,96,120,144,168,192,216,240]
+thour = [6,12,18] +\
+	[36,60]
+ticks = [1,2,3,4,5] +\
+	[8,10,] +\
+	[14,16] +\
+	[20,22] +\
+	[27,30,33] +\
+	[39,42,45] +\
+	[51,54,57] +\
+	[63,66,69] +\
+	[84,108,132,156, 180, 204,228]
+
+#	[7,8,9,10,11] +\
+#	[13,14,15,16,17] +\
+#	[19,20,21,22,23] +\
+#	[26,28,30,32,34] +\
+#	[38,40,42,44,46] +\
+#	[50,52,54,56,62,64,66,68,70] +\
+
+h_ang = volt_deg(tvolts[find_nearest(tleft, array(thour)*60*60)], *vpar)
+d_ang = volt_deg(tvolts[find_nearest(tleft, array(tdays)*60*60)], *vpar)
+t_ang = volt_deg(tvolts[find_nearest(tleft, array(ticks)*60*60)], *vpar)
+
+def to_mm(x,y):
+    return (x*sw.mm, y*sw.mm)
 
 # Assume 0 deg is east, going counterclockwise. Before conversion, multiply by dir and
 # add adj. 
 def rt_xy(r, theta, center=(0,0), adj=0.0, adir=1, ydir=1):
     thadj = (theta*pi/180.0)*adir+(adj*pi/180.0)
-    return to_mm((center[0]+r*cos(thadj),center[1]+ydir*r*sin(thadj)))
+    return ((center[0]+r*cos(thadj))*sw.mm,(center[1]+ydir*r*sin(thadj))*sw.mm)
 
+def print 
 
 cx = 51.5/2.0
 cy = 35.0
-dout = 26.0	    #outside diameter
-din_l = dout-10.0   # inside for major ticks
-din_s = dout-7.0    # ditto minor ticks
+dout = 28.0	    #outside diameter
+din_d = dout-4.0   # inside for day ticks
+din_h = dout-3.0   # inside for hour ticks
+din_s = dout-2.0    # ditto minor ticks
 
 #angles. May need manual adjustment
 
@@ -193,19 +220,37 @@ ac = (amax-amin)/2.0
 
 ppar=[(cx, cy), 90.0+ac, -1, -1]
 
-dial = sw.Drawing('dial.svg', size=(u'51.5mm',u'35mm'), profile="tiny")
+dial = sw.Drawing('dial.svg', size=(u'51.5mm',u'35mm'))
 
+days = dial.add(dial.g(id='days', stroke=sw.rgb(192,64,64), stroke_width=0.5))
+hours = dial.add(dial.g(id='hours', stroke=sw.rgb(0,0,0), stroke_width=0.5))
+other = dial.add(dial.g(id='small', stroke=sw.rgb(0,0,0), stroke_width=0.1))
+
+
+## cutting marks
 dial.add(dial.rect(("0%","0%"), ("100%","100%"), stroke="grey",
-fill="none"))
-dial.add(dial.line(to_mm((0,31.5)), to_mm((51.5,31.5)), stroke="grey"))
-# angles for the explicit steps
-st_ang = volt_deg(tvolts[nearest], *vpar)
+fill="none", stroke_width=0.1))
+dial.add(dial.line(to_mm(0,31.5), to_mm(51.5,31.5), stroke="grey",
+    stroke_width=0.1))
+dial.add(dial.circle(center=(to_mm(51.5/2.0, 35.0)), r=7.0*sw.mm, stroke='grey',
+                          stroke_width=0.1, fill="none"))
 
-dial.add(dial.line(rt_xy(10, 0,*ppar), rt_xy(dout,0,*ppar),
-    stroke=sw.rgb(0,0,0)))
+dial.add(dial.circle(center=(to_mm(51.5/2.0, 35.0)), r=29.0*sw.mm, stroke='grey',
+                          stroke_width=0.1, fill="none"))
 
-for a in st_ang:
-    dial.add(dial.line(rt_xy(din_l, a, *ppar),rt_xy(dout,a, *ppar), stroke=sw.rgb(0,0,0)))
+# Zero line
+dial.add(dial.line(rt_xy(20, 0,*ppar), rt_xy(dout,0,*ppar),
+    stroke='black', stroke_width=0.5))
+
+#Day marks
+for a in d_ang:
+    days.add(dial.line(rt_xy(din_d, a, *ppar),rt_xy(dout,a, *ppar)))
+# hour marks
+for a in h_ang:
+    hours.add(dial.line(rt_xy(din_h, a, *ppar),rt_xy(dout,a, *ppar)))
+for a in t_ang:
+    other.add(dial.line(rt_xy(din_s, a, *ppar),rt_xy(dout,a, *ppar)))
 
 dial.save()
+
 
