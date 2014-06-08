@@ -91,13 +91,16 @@ int led = 13;
 unsigned long led_time;
 int led_state;
 // Rotary encoder
-int in_A = 2;
-int in_B = 3;
+int in_A = 3;
+int in_B = 2;
 int last_A = HIGH;
 
 // Pump
 int pump = 12;
-int pumptime =30*1000;
+int pumptime = 30*1000;
+unsigned long water_time;
+bool watering = false;
+
 // Mode switch
 int in_run = 7;
 int in_set = 8;
@@ -106,7 +109,7 @@ int in_set = 8;
 unsigned long end_time;     // absolute time at which the countdown is finished and we start watering
 unsigned long next_time;    // absolute time at which we take the next countdown step down 
 int cur_idx = 0;            // current position index: 0 <= cur_ind <= 255
-int set_idx = 2;            // set time position 0<= set_idx < n_times
+int set_idx = 5;            // set time position 0<= set_idx < n_times
 
 // state
 #define NO_STATE 0
@@ -135,8 +138,8 @@ void setup() {
 }
 
 unsigned long read_tleft(int idx) {
-  //  return 1000* (unsigned long)pgm_read_dword_near(tleft+idx);
-  return (unsigned long)pgm_read_dword_near(tleft+idx);
+  return 1000* (unsigned long)pgm_read_dword_near(tleft+idx);
+  //return (unsigned long)pgm_read_dword_near(tleft+idx);
 }
 
 // fix our chosen time and set the initial index time
@@ -150,23 +153,33 @@ void start_countdown() {
   analogWrite(out_display, cur_idx);   
 }  
 
+void start_water() {
+    water_time = millis() + pumptime;
+    digitalWrite(pump, HIGH); 
+    watering = true;
+}  
+ 
+void stop_water() {
+    digitalWrite(pump, LOW);
+    watering = false; 
+    start_countdown();
+} 
+
 void do_water() {
 
-  digitalWrite(led, HIGH); 
-  digitalWrite(pump, HIGH); 
-  delay(pumptime);
-  digitalWrite(led,LOW);
-  digitalWrite(pump,LOW);
+  unsigned long get_time = millis();
+  if (get_time > water_time) {
+    stop_water();
+  }
 }
 
 void do_countdown() {
 
   unsigned long get_time = millis();
   if (get_time >= end_time) {
-    do_water();
-    start_countdown();
+    start_water();    
   } 
-  if (get_time >= next_time) {
+  else if (get_time >= next_time) {
     cur_idx--;
     unsigned long nt = read_tleft(cur_idx);
     next_time = end_time-nt;
@@ -232,9 +245,13 @@ void loop() {
   }
 
   if (mode==RUN_STATE) {
-
-    do_countdown();
+    if (watering == false) {
+      do_countdown();
+    } else {
+      do_water();
+    }
   }
+  
   delay(1);
 
   int set_switch = digitalRead(in_set);
@@ -247,6 +264,7 @@ void loop() {
       mode = SET_STATE;
       led_time = millis();
       led_state = HIGH;
+      stop_water();
     }
   }
 
@@ -266,7 +284,7 @@ void loop() {
     if (mode != NO_STATE) {
       mode = NO_STATE;
       digitalWrite(led, LOW);
-      digitalWrite(pump, LOW);
+      stop_water();
     }
   }
 }
