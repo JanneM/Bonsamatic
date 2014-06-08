@@ -8,14 +8,14 @@
 // cumulative time left for a given value of output.
 // generated as tleft in analogdisplay.py
 const prog_uint32_t tleft[] PROGMEM = {
-       0,    822,   1658,   2507,   3370,   4246,   5136,   6040,
-    6959,   7892,   8840,   9803,  10782,  11776,  12785,  13811,
-   14853,  15911,  16987,  18079,  19189,  20316,  21461,  22625,
-   23806,  25007,  26227,  27466,  28724,  30003,  31302,  32621,
-   33962,  35324,  36707,  38112,  39540,  40990,  42464,  43960,
-   45481,  47026,  48595,  50189,  51808,  53453,  55124,  56822,
-   58546,  60298,  62456,  65385,  68329,  71289,  74265,  77256,
-   80262,  83283,  86319,  89369,  92434,  95513,  98606, 101713,
+  0,    822,   1658,   2507,   3370,   4246,   5136,   6040,
+  6959,   7892,   8840,   9803,  10782,  11776,  12785,  13811,
+  14853,  15911,  16987,  18079,  19189,  20316,  21461,  22625,
+  23806,  25007,  26227,  27466,  28724,  30003,  31302,  32621,
+  33962,  35324,  36707,  38112,  39540,  40990,  42464,  43960,
+  45481,  47026,  48595,  50189,  51808,  53453,  55124,  56822,
+  58546,  60298,  62456,  65385,  68329,  71289,  74265,  77256,
+  80262,  83283,  86319,  89369,  92434,  95513,  98606, 101713,
   104833, 107968, 111115, 114276, 117450, 120637, 123837, 127049,
   130274, 133512, 136762, 140024, 143298, 146584, 149882, 153192,
   156513, 159846, 163190, 166546, 169913, 173291, 176680, 180080,
@@ -44,38 +44,60 @@ const prog_uint32_t tleft[] PROGMEM = {
 typedef struct {
   unsigned long t;    // actual time set in seconds
   int idx;            // index to closest step in tleft
-} set_times_struct;
+} 
+set_times_struct;
 
 const int n_times = 16;
 
 set_times_struct set_times[n_times] = {
-{0, 　　　　　　　0},   // 0 hours
-{21600, 　　22},   // 6 hours
-{43200, 　　38},   // 12 hours
-{64800, 　　51},   // 18 hours
-{86400, 　　58},   // 24 hours
-{129600,　 72},   // 36 hours
-{172800, 　85},   // 48 hours
-{216000, 　97},   // 60 hours
-{259200, 109},   // 72 hours
-{345600, 133},   // 96 hours
-{432000, 155},   // 120 hours
-{518400, 176},   // 144 hours
-{604800, 196},   // 168 hours
-{691200, 216},   // 192 hours
-{777600, 236},   // 216 hours
-{864000, 255}};  // 240 hours
+  {0,0}
+  ,   // 0 hours
+  {21600,22}
+  ,   // 6 hours
+  {43200,38}
+  ,   // 12 hours
+  {64800,51}
+  ,   // 18 hours
+  {86400,58}
+  ,   // 24 hours
+  {129600,72}
+  ,   // 36 hours
+  {172800,85}
+  ,   // 48 hours
+  {216000,97}
+  ,   // 60 hours
+  {259200,109}
+  ,   // 72 hours
+  {345600,133}
+  ,   // 96 hours
+  {432000,155}
+  ,   // 120 hours
+  {518400,176}
+  ,   // 144 hours
+  {604800,196}
+  ,   // 168 hours
+  {691200,216}
+  ,   // 192 hours
+  {777600,236}
+  ,   // 216 hours
+  {864000,255}
+};  // 240 hours
 
 // Analog display
 int out_display = 9;
 int voltage = 0;
-int led = 13;
 
+int led = 13;
+unsigned long led_time;
+int led_state;
 // Rotary encoder
 int in_A = 2;
 int in_B = 3;
 int last_A = HIGH;
 
+// Pump
+int pump = 12;
+int pumptime =30*1000;
 // Mode switch
 int in_run = 7;
 int in_set = 8;
@@ -106,17 +128,20 @@ void setup() {
   pinMode(in_run, INPUT);
   pinMode(in_set, INPUT);
   pinMode(led, OUTPUT);
+  pinMode(pump, OUTPUT);
   start_countdown();
+  led_time = millis();
+  led_state = HIGH;
 }
 
 unsigned long read_tleft(int idx) {
-//  return 1000* (unsigned long)pgm_read_dword_near(tleft+idx);
+  //  return 1000* (unsigned long)pgm_read_dword_near(tleft+idx);
   return (unsigned long)pgm_read_dword_near(tleft+idx);
 }
 
 // fix our chosen time and set the initial index time
 void start_countdown() {
- 
+
   unsigned long get_time = millis();
   cur_idx = set_times[set_idx].idx;
   end_time = get_time+set_times[set_idx].t;
@@ -124,12 +149,14 @@ void start_countdown() {
   next_time = end_time-nt;
   analogWrite(out_display, cur_idx);   
 }  
- 
+
 void do_water() {
- 
-  digitalWrite(led, HIGH);  
-  delay(1000);
+
+  digitalWrite(led, HIGH); 
+  digitalWrite(pump, HIGH); 
+  delay(pumptime);
   digitalWrite(led,LOW);
+  digitalWrite(pump,LOW);
 }
 
 void do_countdown() {
@@ -146,16 +173,38 @@ void do_countdown() {
     analogWrite(out_display, cur_idx);   
   }  
 }
-  
+
 // keep the time index in the valid range, and set the dial to 
 // reflect the current choice.
 int set_time(int sidx) {
-  
-  if (sidx < 0) {sidx = 0;}
-  if (sidx >= n_times) {sidx = n_times-1;}
-  
+
+  if (sidx < 0) {
+    sidx = 0;
+  }
+  if (sidx >= n_times) {
+    sidx = n_times-1;
+  }
+
   analogWrite(out_display, set_times[sidx].idx);
   return sidx;
+}
+
+// Blink the LED while we're in the time set mode
+void set_led() {
+
+  unsigned long now_time = millis();
+
+  if ((led_time + 1000UL) < now_time) {
+
+    if (led_state == HIGH) {
+      led_state = LOW;
+      digitalWrite(led,LOW);
+    } else {
+      led_state = HIGH;
+      digitalWrite(led,HIGH);
+    }
+    led_time = now_time;
+  }    
 }
 
 // check the state of the rotary dial and set the desired time based on that.
@@ -173,46 +222,55 @@ void do_set_time() {
     }
   }
   last_A = A_state;
-//  delay(1);    
+  set_led();  
 }  
 
 void loop() {
-  
+
   if (mode==SET_STATE) {
     do_set_time();
   }
-  
+
   if (mode==RUN_STATE) {
-    
+
     do_countdown();
   }
   delay(1);
-  
+
   int set_switch = digitalRead(in_set);
   int run_switch = digitalRead(in_run);
-  
+
+// Set the time
+
   if (set_switch == HIGH) {
-    digitalWrite(led, HIGH);
-  
     if (mode != SET_STATE) {
       mode = SET_STATE;
+      led_time = millis();
+      led_state = HIGH;
     }
   }
+
+// Run the countdown
+
   if (run_switch == HIGH) {
     if (mode != RUN_STATE) {
       mode = RUN_STATE;
       start_countdown();
-    }
-  }
-  if ((run_switch == LOW) && (set_switch == LOW)) {
-    if (mode != NO_STATE) {
-      mode = NO_STATE;
+      digitalWrite(led,HIGH);
     }
   }
 
-  // read mode switch
-  
+// Turn off.
+
+  if ((run_switch == LOW) && (set_switch == LOW)) {
+    if (mode != NO_STATE) {
+      mode = NO_STATE;
+      digitalWrite(led, LOW);
+      digitalWrite(pump, LOW);
+    }
+  }
 }
+
 
 
 
