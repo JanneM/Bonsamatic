@@ -50,38 +50,23 @@ set_times_struct;
 const int n_times = 16;
 
 set_times_struct set_times[n_times] = {
-  {0,0}
-  ,   // 0 hours
-  {21600,22}
-  ,   // 6 hours
-  {43200,38}
-  ,   // 12 hours
-  {64800,51}
-  ,   // 18 hours
-  {86400,58}
-  ,   // 24 hours
-  {129600,72}
-  ,   // 36 hours
-  {172800,85}
-  ,   // 48 hours
-  {216000,97}
-  ,   // 60 hours
-  {259200,109}
-  ,   // 72 hours
-  {345600,133}
-  ,   // 96 hours
-  {432000,155}
-  ,   // 120 hours
-  {518400,176}
-  ,   // 144 hours
-  {604800,196}
-  ,   // 168 hours
-  {691200,216}
-  ,   // 192 hours
-  {777600,236}
-  ,   // 216 hours
-  {864000,255}
-};  // 240 hours
+  {0     , 0  },   // 0 hours
+  {21600 , 22 },   // 6 hours
+  {43200 , 38 },   // 12 hours
+  {64800 , 51 },   // 18 hours
+  {86400 , 58 },   // 24 hours
+  {129600, 72 },   // 36 hours
+  {172800, 85 },   // 48 hours
+  {216000, 97 },   // 60 hours
+  {259200, 109},   // 72 hours
+  {345600, 133},   // 96 hours
+  {432000, 155},   // 120 hours
+  {518400, 176},   // 144 hours
+  {604800, 196},   // 168 hours
+  {691200, 216},   // 192 hours
+  {777600, 236},   // 216 hours
+  {864000, 255}    // 240 hours
+};
 
 // Analog display
 int out_display = 9;
@@ -97,7 +82,7 @@ int last_A = HIGH;
 
 // Pump
 int pump = 12;
-int pumptime = 30*1000;
+int pumptime = 20*1000;
 unsigned long water_time;
 bool watering = false;
 
