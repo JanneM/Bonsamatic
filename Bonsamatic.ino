@@ -2,10 +2,12 @@
 //
 // Jan Moren
 
+#define DEBUG false
+
 // lookup tables
 #include <avr/pgmspace.h>
 
-// cumulative time left for a given value of output.
+// cumulative time left in seconds for a given value of output.
 // generated as tleft in analogdisplay.py
 const prog_uint32_t tleft[] PROGMEM = {
   0,    822,   1658,   2507,   3370,   4246,   5136,   6040,
@@ -94,23 +96,21 @@ int in_set = 8;
 unsigned long end_time;     // absolute time at which the countdown is finished and we start watering
 unsigned long next_time;    // absolute time at which we take the next countdown step down 
 int cur_idx = 0;            // current position index: 0 <= cur_ind <= 255
-int set_idx = 5;            // set time position 0<= set_idx < n_times
-
+int set_idx = 5; // set time position 0<= set_idx < n_times
 // state
 #define NO_STATE 0
 #define RUN_STATE 1
 #define SET_STATE 2
-
 char mode = NO_STATE;
 
 //
 // functions
 //
-
+  
 void setup() {
 
   // Rotary encoder set-up
-  //  Serial.begin(9600);
+  if (DEBUG) Serial.begin(9600);
   pinMode(in_A, INPUT);
   pinMode(in_B, INPUT);
   pinMode(in_run, INPUT);
@@ -122,36 +122,55 @@ void setup() {
   led_state = HIGH;
 }
 
-unsigned long read_tleft(int idx) {
-  return 1000* (unsigned long)pgm_read_dword_near(tleft+idx);
-  //return (unsigned long)pgm_read_dword_near(tleft+idx);
+// translate from seconds to milliseconds.
+// also useful for debugging; set
+inline unsigned long s_to_ms(unsigned long sec) {
+  return sec/10;
+}
+
+inline unsigned long read_tleft(int idx) {
+  return s_to_ms(pgm_read_dword_near(tleft+idx));  
 }
 
 // fix our chosen time and set the initial index time
 void start_countdown() {
-
+  if (DEBUG) Serial.print("start countdown: ");
   unsigned long get_time = millis();
   cur_idx = set_times[set_idx].idx;
-  end_time = get_time+set_times[set_idx].t;
+  end_time = get_time+s_to_ms(set_times[set_idx].t);
   unsigned long nt = read_tleft(cur_idx);
-  next_time = end_time-nt;
+  next_time = end_time-nt;  
+  if (next_time > get_time) 
+    next_time = get_time;
+  if (DEBUG) {
+    Serial.print(end_time);
+    Serial.print(" - ");  
+    Serial.print(nt);
+    Serial.print(" = ");
+    Serial.print(next_time);
+    Serial.print("\n");
+  }
+
   analogWrite(out_display, cur_idx);   
 }  
 
 void start_water() {
-    water_time = millis() + pumptime;
-    digitalWrite(pump, HIGH); 
-    watering = true;
+  if (DEBUG) Serial.print("start water: ");
+  water_time = millis() + pumptime;
+  if (DEBUG) Serial.print(water_time);
+  if (DEBUG) Serial.print ("\n");
+  digitalWrite(pump, HIGH); 
+   watering = true;
 }  
  
 void stop_water() {
-    digitalWrite(pump, LOW);
-    watering = false; 
-    start_countdown();
+  if (DEBUG) Serial.print("stop water\n");
+  digitalWrite(pump, LOW);
+  watering = false; 
+  start_countdown();
 } 
 
-void do_water() {
-
+void do_water() {  
   unsigned long get_time = millis();
   if (get_time > water_time) {
     stop_water();
@@ -159,6 +178,8 @@ void do_water() {
 }
 
 void do_countdown() {
+
+//  Serial.print("Do countdown\n");
 
   unsigned long get_time = millis();
   if (get_time >= end_time) {
@@ -192,17 +213,16 @@ void set_led() {
 
   unsigned long now_time = millis();
 
-  if ((led_time + 1000UL) < now_time) {
+  if ((led_time + 500UL) < now_time) {
 
     if (led_state == HIGH) {
       led_state = LOW;
-      digitalWrite(led,LOW);
     } else {
       led_state = HIGH;
-      digitalWrite(led,HIGH);
-    }
+    } 
     led_time = now_time;
   }    
+  digitalWrite(led, led_state);
 }
 
 // check the state of the rotary dial and set the desired time based on that.
