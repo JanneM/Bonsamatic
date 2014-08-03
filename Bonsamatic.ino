@@ -123,9 +123,9 @@ void setup() {
 }
 
 // translate from seconds to milliseconds.
-// also useful for debugging; set
+// also useful for debugging.
 inline unsigned long s_to_ms(unsigned long sec) {
-  return sec/10;
+  return sec*1000;
 }
 
 inline unsigned long read_tleft(int idx) {
