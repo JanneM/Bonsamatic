@@ -84,7 +84,7 @@ int last_A = HIGH;
 
 // Pump
 int pump = 12;
-int pumptime = 20*1000;
+int pumptime = 30*1000;
 unsigned long water_time;
 bool watering = false;
 
