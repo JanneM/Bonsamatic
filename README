@@ -1,0 +1,33 @@
+Bonsamatic is a small-size timer plant watering system, devised to keep my bonsai alive and well during travel. 
+
+
+Bonsamatic features:
+
+* A good quality Japanese-made membrane pump for reliable water dosage.
+
+* Water-resistant design that let me leave it out on the balcony without worrying about rain. The box, the meter and 12V power plug are sealed, and the top switch is rated for outdoor use.
+
+* A stylish, easy to read analog time meter and tactile analog controls. You can easily set a time from 4 hours to 10 days at the twist of a dial, and see the time left at a glance.
+
+* Custom-designed(1) Arduino breadboard with all electroncis for control, the UI and motor control on a single board. 
+
+* Quality(2) embedded control software that has been tested literally handfuls of times.
+
+* An LED. Every project needs an LED. 
+
+
+Bonsai need water on a very regular schedule, but do not like being constantly wet. Bonsamatic 1.0 relies on a timer for watering, rather than a moisture sensor. This works fine for a period of a week or two. 
+
+If you want a water system that can work indefinitely you need to measure the soil moisture content. A proper moisture sensor and a wifi connection is on the to-do list, but it is quite difficult to make a good, reliable moisture sensor so it will not happen in the near term.
+
+
+The most interesting part of this project is perhaps not the water system itself, but the time display. The time frame ranges from hours to several days, so a logarithmic scale is all but necessary. However, I use a cheap(3) analog dial, and its voltage response is anything but regular. And as the Atmel AVR pwm has only 8 bit resolution, we need to figure out how to map the display response directly to the scale we want with minimal inaccuracy.
+
+
+
+(1) "custom" as in "I made it up as I went along".
+
+(2) The word "high" appears nowhere in the vicinity of "quality". This is not an accident.
+
+(3) I looked for the lowest-cost analog voltage dial at Digit. 
+
