@@ -1,6 +1,6 @@
 # Bonsamatic
 
-<div style="float: left;"><div style="float:left;" align="center">![Bonsa](Images/bonsa.png)</div>Bonsamatic is a small-size timer plant watering system, devised to keep my bonsai alive and well during travel. 
+![Bonsa](Images/bonsa.png) Bonsamatic is a small-size timer plant watering system, devised to keep my bonsai alive and well during travel. 
 
 
 ## Bonsamatic features:
@@ -15,7 +15,7 @@
 
 * Quality(2) embedded control software that has been tested literally handfuls of times.
 
-* An LED. Every project needs an LED. </div>
+* An LED. Every project needs an LED. 
 
 
 Bonsai need water on a very regular schedule, but don't like being constantly wet. Bonsamatic 1.0 relies on a timer for watering, rather than a moisture sensor. This works fine for a period of a week or two. If you want a water system that can work indefinitely you need to measure the soil moisture content. A proper moisture sensor and a wifi connection is on the to-do list, but it is quite difficult to make a good, reliable moisture sensor so it will not happen in the near term.
