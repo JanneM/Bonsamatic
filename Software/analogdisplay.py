@@ -1,33 +1,89 @@
 #!/usr/bin/python
-import numpy as np
-from pylab import *
-from scipy.optimize import curve_fit
-#for the dial drawing
-import svgwrite as sw
+#
+# A script to figure out how to create a specific logarithmic scale on an
+# analog voltage-controlled dial. It's more of an example than a finished
+# application, as you may need to modify it to fit your hardware and desired
+# scale.
+#
+# Copyright 2014 Jan Moren
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# initial estimated Voltage/degree relationship, 10k resistor
+try:
+    import numpy as np 
+    from pylab import * 
+    from scipy.optimize import curve_fit
+except:
+    print("\nFATAL: can't find scipy. Aborting.\n")
+    exit(-1)
 
-V=array([0, 0.28, 0.55, 0.76, 0.96, 1.15, 1.34,1.54, 1.78,2.11,2.45,2.81,3.25,3.85,4.57,5.26])
-D=linspace(0,75,16)
+# svgwrite is used for drawing the dial scale. It's not part of the standard
+# python install. Either set "Draw_dial" to False below or install it. 
+#
+# install it with pip: sudo pip install svgwrite
+# Or get svgwrite from here: https://pypi.python.org/pypi/svgwrite/1.1.6
 
-# two phases: 0-20 deg linear; 20-75 deg logarithmic
-# log estimation:
+Draw_dial = True
 
-d=D[4:]
-lv=log(V[4:])
+if Draw_dial:
+    try:
+        import svgwrite as sw
+    except:
+        print ("\nWARNING: could not import svgwrite.\n"+
+        "Perhaps it's not installed? Proceeding without.\n")
+        Draw_dial = False
 
-x=vstack([d, ones(len(d))]).T
-mlog,clog=lstsq(x, lv)[0]
+# Initial measured voltage/degree relationship, 10k resistor. The voltages
+# were measured at 5-degree intervals using a controllable power supply. It'd
+# work fine to use the Arduino pwm output as well of course.
 
-# alternative:
+V = array([0, 0.28, 0.55, 0.76, 0.96, 1.15, 1.34, 1.54,
+    1.78,2.11,2.45,2.81,3.25,3.85,4.57,5.26])
+
+D = linspace(0,75,16)
+
+### (1) Create estimate of the voltage-degree relationship for our dial.
+
+# In this case we have two phases (estimated by eye, pretty much, in a graph
+# like the one we plot below): 0-20 degrees is linear and 20-75 degrees is
+# logarithmic. 
+#
+# I did try to fit a general 3 or 4-degree polynomial but this two-part
+# estimation gave me better results. Your mileage will certainly vary
+# depending on the dial you have.
+
+# logarithmic estimation (using the least-squares estimation of scipy). Get
+# the angles and the log of voltages beyond 20 degrees 
+
+d = D[4:]
+lv = log(V[4:])
+
+# create a 2 by len(d) array with all ones in the second column
+x = vstack([d, ones(len(d))]).T
+
+# fit the (angle, log(voltage)) relationship
+mlog,clog = lstsq(x, lv)[0]
+
+# alternative way to do this with an explicit function:
 #def flog(x,m,c):
 #    return exp(m*x+c)
 #logpars, rest = curve_fit(flog,d,v)
 # mlog = logpars[0]
 # clog = logpars[1]
 
-# mlog = 0.030608073895719921
-# clog = -0.63868866219381337
+# Convenience functions to return the voltage given angle, or angle given 
+# voltage for the parameters we found, when angle is bayond 20 degrees:
 
 def Vlog(deg, m, c):
     return exp(m*array(deg)+c)
@@ -35,25 +91,28 @@ def Vlog(deg, m, c):
 def Dlog(v, m, c):
     return (log(array(v))-c)/m
 
-# linear estimation:
-
-# assume line from (V0,0)->(V(20), 20)
+# linear estimation of the 0-20 degree range: 
+# assume line from (V(0),0)->(V(20), 20), so it 
+# will always cross the y-axis at (0,0)
 
 clin = 0.0
 mlin = (Vlog(20,mlog,clog)-0)/(20.-0)
 
-#mlin = 0.048691078541901502
-
+# our estimates as a single structure 
 vpar = [mlog, clog, mlin]
 
+# convenience functions to map angle and voltage to each other 
+# within the (0,20) degree range
 def Vlin(deg,m):
     return m*deg
 
 def Dlin(v,m):
     return v/float(m)
 
+# more general functions to map voltage and angle. 
 def deg_volt(deg,ml,cl,m):
-    
+    """ give a single degree or range of degrees and get a list of 
+    voltages in return"""
     if not iterable(deg):
 	deg=[deg]
     res=[]
@@ -66,6 +125,8 @@ def deg_volt(deg,ml,cl,m):
     return array(res)
 
 def volt_deg(vlt,ml,cl,m):
+    """ give a single voltage or range of voltages and get a list of 
+    degrees in return"""
     
     if not iterable(vlt): 
 	vlt=[vlt]
@@ -77,37 +138,56 @@ def volt_deg(vlt,ml,cl,m):
 	    res.append(Dlin(v,m))
     return res
 
+# Print our parameters
+print("Log:    m_log, c_log: \t[{:.4}, {:.4}]".format(mlog, clog))
+print("Linear: m_lin, c_lin: \t[{:.4}, 0.0000]".format(mlin))
 
-print "mlog, clog, mlin: ", mlog, clog, mlin
-# 73.44 or about 73 deg
-print "max angle:", volt_deg(5.0, mlog,clog,mlin)
+print ("maximum angle at 5V: \t{:.4}".format(volt_deg(5.0, mlog,clog,mlin)[0]))
 
+# For verification, plot the measured voltage/angle points as crosses; the
+# logarithmic estimation in red and the linear bit in blue hashes
 
-#plot(D,V,'-.', d, exp(0.03061*d-0.6387), D[0:5], 0.04869*D[0:5])
-#show()
+print("\nClose the plot to continue.")
 
-# create nice log-like scale distribution
-# 
-# General function forms
+plot(D,V,'k+', ms=8, label="measured")
+plot(d, exp(0.03061*d-0.6387),"-", color="#aa0000", label="log est.")
+plot(D[0:5], 0.04869*D[0:5], "--", color="#0000aa", label="linear est.")
+xlabel("Degrees")
+ylabel("Volt")
+legend(loc="upper left")
+title("Measured and estimated voltage-angle dependency\n")
+show()
+
+### (2) create a general log-scale mapping between times and angles. Basically
+### what we want our new dial scale to look like.
+
+# We're looking for a log-like mapping between a set of time points and
+# angles. Below we say that these three times (in hours) in "tp" should
+# correspond to these three angles in "degp". And we want the function "tp" to
+# fit these value pairs. The values below set 0 hours at the left end, 48
+# hours (2 days) in the center and 240 hours (10 days) at the right end.
+
+tp = array([0.0, 48.0, 240])
+degp = array([0.0, 37.5, 73.44])	
+
+# "tp" is a three-degree of freedom log function. "a" lets us scale the angle;
+# "c" lets us scale the time, and "b" scales the log relationship itself. Why
+# three degrees? I tried with one (only b) and two-degree (only a and b or
+# only b and c) functions but they wouldn't fit properly. You often need to
+# try different things like this.  
 
 def tf(t,a,b,c):
     return a+b*log(t+c)
 
-# Fit through the following points:
-
-tp=array([0.0, 48.0, 240])
-degp=array([0.0, 37.5, 73.44])	# the not-quite max angle above
-
-# will return a warning for singular value in tf
+# use the general curve fit optimizer to fit "tf" to the parameters above.
+# this call will return a warning for singular value in tf. Ignore that.
+print("")
 tpar, rest = curve_fit(tf,tp,degp)
 
-# tpar = [a, b, c]
+print("\nlog dial params\n\n\ta: {}\n\tb: {}\n\tc: {}".format(*tpar))
 
-# a = -66.347194822630726
-# b = 25.165693379835989
-# c = 13.963046955699566
-
-print tpar
+# Convenience functions to map time to angle according to the parameters we
+# found above.
 def t_deg(t,a,b,c):
     deg = a+b*log(t+c)
     return deg
@@ -116,28 +196,43 @@ def deg_t(deg,a,b,c):
     t = exp((deg-a)/b)-c
     return t
 
-# We've got 8 bits worth of voltage division. calc tables mapping these
-# voltage indexes to angle, index to time and back.
+### (3) We have a voltage-angle mapping for our dial and an angle-time mapping
+### for our new scale. Put them together. 
 
-# also decide on divisions for the time setting. for each time, choose the
-# closest index.
+# A twist here is that we have a restricted number of (8 bits worth or 256, to
+# be precise) possible voltages. We need to base our mappings on those
+# particular voltages since we can't generate any voltages in between. So we
+# calculate tables that map each of those voltage indexes to the corresponding
+# dial angle (from the voltage-angle mapping); to the corresponding time (from
+# the angle-time mapping) and back.
+# 
+# We also need to decide on the time points we want to be able to select when
+# setting the time. For each such time, choose the closest index in the table
+# above.
+#
+# We print out a table showing the number of seconds left for each voltage. On
+# the Arduino, we record the clock time when watering will happen, and compare
+# it to the current time in a loop. Whenever that difference becomes smaller
+# than the time for the next smaller voltage we drop to that smaller voltage
+# and repeat until we reach zero.
+#
+# The benefit of this approach is that we always compare the current time to
+# a fixed end time. That way we won't accumulate any errors over time the way
+# we would if we just counted down a fixed amount for each step. The
+# difference wouldn't matter in practice, of course, but this is neater.
 
-# when running, given a particular index, the current time, and the time to
-# end, how long should we wait to tick down to the next index?
+# Our allowable voltages between 0 and 5 volts
+tvolts = arange(256) * 5./255.
 
-# for each index, hold the accumulated time left when you reach the next in
-# line. So, index #1 will have 0, #2 will have time between #0 and #1 and so
-# on.
-
-# setting times
-times = [6,12,18, 24,36, 48,60, 72, 96, 120, 144, 168, 192, 216, 240]
-tvolts = arange(256)*5./255.
-
+# Our desired time points when seting the time (in hours)
+times = [6, 12, 18, 24, 36, 48, 60, 72, 96, 120, 144, 168, 192, 216, 240]
 
 def find_nearest(arr,val):
+    """ find the index of the nearest value in arr that is not 
+    larger than the value in val."""
     if not iterable(val): 
-	val=[val]
-    res=[]
+	val = [val]
+    res = []
     for v in val:
 	res.append((abs(arr-v)).argmin())
     
@@ -149,108 +244,120 @@ def find_nearest(arr,val):
 vd = volt_deg(tvolts, *vpar)
 vt = deg_t(vd, *tpar)
 
-# cumlative time to goal in seconds. secdiff[n] tells us how many seconds to wait to reach
-# n from n+1.
-tleft=np.round(vt*60*60).astype(int)
+# cumlative time to goal in seconds. It's formatted to cut and paste
+# into the arduino sketch code.
 
-#secdiff=diff(secs)
+tleft = np.round(vt*60*60).astype(int)
 
-# desired 
+print("\nTime indices for each voltage.\n") 
+for i in range(32):
+    print("{:>7},{:>7},{:>7},{:>7},{:>7},{:>7},{:>7},{:>7}"
+            .format(*tleft[i*8:(i+1)*8]) + "{}"
+            .format("," if i<31 else ""))
+        
+
+# We need to treat our set times a little differently. Most set times do not
+# correspond directly to a possible voltage. So we create a smaller table with
+# the total time to countdown, and the closest available voltage index. Also
+# cut and paste into the sketch.
+
+# convert to seconds and find the nearest voltage index
 stimes = array(times)*60*60
-
 nearest = find_nearest(tleft, stimes)
 
-for t,n,h in zip(stimes,nearest, times):
-    print "{{{0}, {1}}},\t // {2} hours".format(t,n,h)
+print("\nTotal countdown time and closest voltage index for each set time:\n")
+
+print"const int n_times = {}\n".format(len(stimes)+1)
+
+print("{{{:>6}, {:>3}}},\t // {:>3} hours".format(0,0,0))
+for t,n,h in zip(stimes[:-1],nearest[:-1], times[:-1]):
+    print ("{{{:>6}, {:>3}}},\t // {:>3} hours".format(t,n,h))
+
+print ("{{{:>6}, {:>3}}}\t // {:>3} hours"
+        .format(stimes[-1],nearest[-1],times[-1]))
+
+if Draw_dial:
+
+    # Draw the resulting display as an svg file.
+    #
+    # We make it for a 51.5x31.5mm screen. The needle center is 35mm from the
+    # upper edge, with 7.5 mm circular clearance.
+
+    cx = 51.5/2.0       # needle center
+    cy = 35.0           # 
+    dout = 28.0	        # outside diameter
+    din_d = dout-4.0    # inside for day ticks
+    din_h = dout-3.0    # inside for hour ticks
+    din_s = dout-2.0    # ditto minor ticks
+
+    # ticks for display 
+    tdays = [24,48,72,96,120,144,168,192,216,240]
+    thour = [6,12,18] +\
+            [36,60]
+    ticks = [1,2,3,4,5] +\
+            [8,10,] +\
+            [14,16] +\
+            [20,22] +\
+            [27,30,33] +\
+            [39,42,45] +\
+            [51,54,57] +\
+            [63,66,69] +\
+            [84,108,132,156, 180, 204,228]
+
+    h_ang = volt_deg(tvolts[find_nearest(tleft, array(thour)*60*60)], *vpar)
+    d_ang = volt_deg(tvolts[find_nearest(tleft, array(tdays)*60*60)], *vpar)
+    t_ang = volt_deg(tvolts[find_nearest(tleft, array(ticks)*60*60)], *vpar)
+
+    def to_mm(x,y):
+        return (x*sw.mm, y*sw.mm)
+
+    # Convert radius and angle to cartesian coordinates. Assume 0 deg is east,
+    # going counterclockwise. Before conversion, multiply by dir and add adj. 
+
+    def rt_xy(r, theta, center=(0,0), adj=0.0, adir=1, ydir=1):
+        thadj = (theta*pi/180.0)*adir+(adj*pi/180.0)
+        return ((center[0]+r*cos(thadj))*sw.mm,(center[1]+ydir*r*sin(thadj))*sw.mm)
+
+    # min, max and center angles.
+
+    amin = volt_deg(tvolts[0], *vpar)[0]
+    amax = volt_deg(tvolts[-1], *vpar)[0]
+    ac = (amax-amin)/2.0
+
+    ppar=[(cx, cy), 90.0+ac, -1, -1]
+
+    # Start a new svg drawing
+    dial = sw.Drawing('dial.svg', size=(u'51.5mm', u'35mm'))
+
+    days = dial.add(dial.g(id='days', stroke=sw.rgb(192,64,64), stroke_width=0.5))
+    hours = dial.add(dial.g(id='hours', stroke=sw.rgb(0,0,0), stroke_width=0.5))
+    other = dial.add(dial.g(id='small', stroke=sw.rgb(0,0,0), stroke_width=0.1))
 
 
-# Plot the resulting display.
-#
-# We make it for 51.5x31.5mm screen. The needle center is 35mm from the upper
-# edge, with 7.5 mm circular clearance needed.
+    ## cutting marks
+    dial.add(dial.rect(("0%","0%"), ("100%","100%"), 
+        stroke="grey", fill="none", stroke_width=0.1))
+    dial.add(dial.line(to_mm(0,31.5), to_mm(51.5,31.5), 
+        stroke="grey", stroke_width=0.1))
+    dial.add(dial.circle(center=(to_mm(51.5/2.0, 35.0)), r=7.0*sw.mm,
+        stroke='grey', stroke_width=0.1, fill="none"))
 
-# ticks for display 
-tdays = [24,48,72,96,120,144,168,192,216,240]
-thour = [6,12,18] +\
-	[36,60]
-ticks = [1,2,3,4,5] +\
-	[8,10,] +\
-	[14,16] +\
-	[20,22] +\
-	[27,30,33] +\
-	[39,42,45] +\
-	[51,54,57] +\
-	[63,66,69] +\
-	[84,108,132,156, 180, 204,228]
+    dial.add(dial.circle(center=(to_mm(51.5/2.0, 35.0)), r=29.0*sw.mm, 
+        stroke='grey', stroke_width=0.1, fill="none"))
 
-#	[7,8,9,10,11] +\
-#	[13,14,15,16,17] +\
-#	[19,20,21,22,23] +\
-#	[26,28,30,32,34] +\
-#	[38,40,42,44,46] +\
-#	[50,52,54,56,62,64,66,68,70] +\
+    # Zero line
+    dial.add(dial.line(rt_xy(20, 0,*ppar), rt_xy(dout,0,*ppar),
+        stroke='black', stroke_width=0.5))
 
-h_ang = volt_deg(tvolts[find_nearest(tleft, array(thour)*60*60)], *vpar)
-d_ang = volt_deg(tvolts[find_nearest(tleft, array(tdays)*60*60)], *vpar)
-t_ang = volt_deg(tvolts[find_nearest(tleft, array(ticks)*60*60)], *vpar)
+    # day marks
+    for a in d_ang:
+        days.add(dial.line(rt_xy(din_d, a, *ppar),rt_xy(dout,a, *ppar)))
+    # hour marks
+    for a in h_ang:
+        hours.add(dial.line(rt_xy(din_h, a, *ppar),rt_xy(dout,a, *ppar)))
+    for a in t_ang:
+        other.add(dial.line(rt_xy(din_s, a, *ppar),rt_xy(dout,a, *ppar)))
 
-def to_mm(x,y):
-    return (x*sw.mm, y*sw.mm)
-
-# Assume 0 deg is east, going counterclockwise. Before conversion, multiply by dir and
-# add adj. 
-def rt_xy(r, theta, center=(0,0), adj=0.0, adir=1, ydir=1):
-    thadj = (theta*pi/180.0)*adir+(adj*pi/180.0)
-    return ((center[0]+r*cos(thadj))*sw.mm,(center[1]+ydir*r*sin(thadj))*sw.mm)
-
-def print 
-
-cx = 51.5/2.0
-cy = 35.0
-dout = 28.0	    #outside diameter
-din_d = dout-4.0   # inside for day ticks
-din_h = dout-3.0   # inside for hour ticks
-din_s = dout-2.0    # ditto minor ticks
-
-#angles. May need manual adjustment
-
-amin = volt_deg(tvolts[0], *vpar)[0]
-amax = volt_deg(tvolts[-1], *vpar)[0]
-ac = (amax-amin)/2.0
-
-ppar=[(cx, cy), 90.0+ac, -1, -1]
-
-dial = sw.Drawing('dial.svg', size=(u'51.5mm',u'35mm'))
-
-days = dial.add(dial.g(id='days', stroke=sw.rgb(192,64,64), stroke_width=0.5))
-hours = dial.add(dial.g(id='hours', stroke=sw.rgb(0,0,0), stroke_width=0.5))
-other = dial.add(dial.g(id='small', stroke=sw.rgb(0,0,0), stroke_width=0.1))
-
-
-## cutting marks
-dial.add(dial.rect(("0%","0%"), ("100%","100%"), stroke="grey",
-fill="none", stroke_width=0.1))
-dial.add(dial.line(to_mm(0,31.5), to_mm(51.5,31.5), stroke="grey",
-    stroke_width=0.1))
-dial.add(dial.circle(center=(to_mm(51.5/2.0, 35.0)), r=7.0*sw.mm, stroke='grey',
-                          stroke_width=0.1, fill="none"))
-
-dial.add(dial.circle(center=(to_mm(51.5/2.0, 35.0)), r=29.0*sw.mm, stroke='grey',
-                          stroke_width=0.1, fill="none"))
-
-# Zero line
-dial.add(dial.line(rt_xy(20, 0,*ppar), rt_xy(dout,0,*ppar),
-    stroke='black', stroke_width=0.5))
-
-#Day marks
-for a in d_ang:
-    days.add(dial.line(rt_xy(din_d, a, *ppar),rt_xy(dout,a, *ppar)))
-# hour marks
-for a in h_ang:
-    hours.add(dial.line(rt_xy(din_h, a, *ppar),rt_xy(dout,a, *ppar)))
-for a in t_ang:
-    other.add(dial.line(rt_xy(din_s, a, *ppar),rt_xy(dout,a, *ppar)))
-
-dial.save()
+    dial.save()
 
 
