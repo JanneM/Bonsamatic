@@ -1,0 +1,35 @@
+# http://www.gnu.org/software/automake
+
+*Makefile.in
+*Makefile
+
+# http://www.gnu.org/software/autoconf
+
+autom4te.cache
+aclocal.m4
+compile
+*configure
+depcomp
+install-sh
+missing
+*config.guess
+*config.log
+*config.status
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+*.swp
+*.~
+*~
