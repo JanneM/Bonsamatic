@@ -1,6 +1,8 @@
 # Bonsamatic
 
-![Bonsa](Images/bonsa.png) Bonsamatic is a small-size timer plant watering system, devised to keep my bonsai alive and well during travel. 
+![Bonsa](Images/bonsa.png) 
+
+Bonsamatic is a small-size timer plant watering system, devised to keep my bonsai alive and well during travel. 
 
 
 ## Bonsamatic features:
